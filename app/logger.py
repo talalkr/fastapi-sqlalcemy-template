@@ -24,7 +24,7 @@ def get_log_level(log_level: LogLevel) -> int:
 def get_logger() -> logging.Logger:
     log_level = get_log_level(LogLevel(env_settings.log_level))
 
-    name = f"app"
+    name = "app"
     new_logger = logging.getLogger(name)
     new_logger.handlers = []
     stdout = logging.StreamHandler(sys.stdout)

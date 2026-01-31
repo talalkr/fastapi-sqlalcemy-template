@@ -1,9 +1,12 @@
 import asyncio
 from logging.config import fileConfig
-
-from sqlalchemy.engine import Connection
+from typing import TYPE_CHECKING
 
 from alembic import context
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine import Connection
+
 from app.storage.db.base import db_manager, metadata
 
 # this is the Alembic Config object, which provides

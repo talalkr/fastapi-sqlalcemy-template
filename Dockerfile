@@ -20,3 +20,9 @@ COPY ./tests ./tests/
 RUN poetry install --verbose --no-root --without dev
 
 EXPOSE 8000
+
+FROM base AS test
+
+WORKDIR /app
+RUN poetry config virtualenvs.create false \
+    && poetry install --no-root --with dev

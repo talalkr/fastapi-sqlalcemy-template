@@ -1,8 +1,6 @@
-from typing import List, Type
+from typing import TYPE_CHECKING
 
-from app.storage.db.repositories.base_async_repository import BaseAsyncRepository
+if TYPE_CHECKING:
+    from app.storage.db.repositories.base_async_repository import BaseAsyncRepository
 
-
-all_repositories: List[Type[BaseAsyncRepository]] = [
-
-]
+all_repositories: list[BaseAsyncRepository] = []  # type: ignore[type-arg]

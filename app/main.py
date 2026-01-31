@@ -1,11 +1,18 @@
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
 from contextlib import asynccontextmanager
+from typing import Any
+
 from fastapi import FastAPI
-from typing import Any, AsyncGenerator
 
 from app.logger import logger
 from app.routers import router
 from app.routers.infra import infra_router
 from app.storage.db.base import db_manager
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[Any, Any]:

@@ -1,9 +1,14 @@
-from typing import Any, Dict, Generic, List, Sequence, TypeVar, cast
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
-from sqlalchemy import Table
+
+if TYPE_CHECKING:
+    from sqlalchemy import Table, UnaryExpression
+    from sqlalchemy.engine import RowMapping
+    from sqlalchemy.ext.asyncio import AsyncEngine
+
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncEngine
 from sqlalchemy.sql.expression import (
     ColumnElement,
     Delete,
@@ -21,13 +26,8 @@ from sqlalchemy.sql.expression import (
 from app.exceptions import IntegrityException, NotFoundException
 from app.storage.db.base import db_manager
 
-T_ID = TypeVar("T_ID")  
-T = TypeVar("T", bound=BaseModel)  
-T_CREATE = TypeVar("T_CREATE", bound=BaseModel)  
-T_UPDATE = TypeVar("T_UPDATE", bound=BaseModel)  
 
-
-class BaseAsyncRepository(Generic[T, T_ID, T_CREATE, T_UPDATE]):
+class BaseAsyncRepository[T: BaseModel, T_ID, T_CREATE: BaseModel, T_UPDATE: BaseModel]:
     @property
     def database(self) -> AsyncEngine:
         return db_manager.engine
@@ -36,11 +36,11 @@ class BaseAsyncRepository(Generic[T, T_ID, T_CREATE, T_UPDATE]):
     def table(self) -> Table:
         raise NotImplementedError()
 
-    def to_domain_model(self, record: Dict) -> T:
+    def to_domain_model(self, record: RowMapping) -> T:
         raise NotImplementedError()
 
-    def to_domain_models(self, records: List[Dict]) -> List[T]:
-        result: List[T] = []
+    def to_domain_models(self, records: list[RowMapping]) -> list[T]:
+        result: list[T] = []
         for record in records:
             result.append(self.to_domain_model(record))
         return result
@@ -49,23 +49,23 @@ class BaseAsyncRepository(Generic[T, T_ID, T_CREATE, T_UPDATE]):
     def _get_dict_with_b_key_prefix(item: dict[str, Any]) -> dict[str, Any]:
         return {f"b_{key}": value for key, value in item.items()}
 
-    def create_instance_to_params(self, create_instance: T_CREATE) -> Dict:
+    def create_instance_to_params(self, create_instance: T_CREATE) -> dict[Any, Any]:
         return create_instance.model_dump(by_alias=True)
 
-    def update_instance_to_params(self, update_instance: T_UPDATE) -> Dict:
+    def update_instance_to_params(self, update_instance: T_UPDATE) -> dict[Any, Any]:
         return update_instance.model_dump(by_alias=True)
 
-    async def _fetchone(self, query: Any) -> Dict | None:
+    async def _fetchone(self, query: Any) -> RowMapping | None:
         async with self.database.connect() as connection:
             result = await connection.execute(query)
             await connection.commit()
-        return result.mappings().one_or_none()  # type: ignore
+        return result.mappings().one_or_none()
 
-    async def _fetchall(self, query: Any) -> List[Dict]:
+    async def _fetchall(self, query: Any) -> Sequence[RowMapping]:
         async with self.database.connect() as connection:
             result = await connection.execute(query)
             await connection.commit()
-        return cast(List[Dict], result.mappings().all())  # type: ignore
+        return result.mappings().all()
 
     async def _fetch_scalar(self, query: Any) -> Any:
         async with self.database.connect() as connection:
@@ -83,29 +83,36 @@ class BaseAsyncRepository(Generic[T, T_ID, T_CREATE, T_UPDATE]):
             await connection.commit()
 
     @property
-    def pk_column(self) -> tuple[ColumnElement, ...]:
+    def pk_column(self) -> tuple[ColumnElement[Any], ...]:
         return (self.table.c.id,)
 
-    def get_all_order_by(self) -> List:
+    def get_all_order_by(self) -> list[UnaryExpression[Any]]:
         return [column.asc() for column in self.pk_column]
 
     def _id_query(self, instance_id: T_ID) -> Any:
         if isinstance(instance_id, Sequence):
             if len(instance_id) == len(self.pk_column):
-                return and_(*[column == value for column, value in zip(self.pk_column, instance_id)])
+                return and_(
+                    *[
+                        column == value
+                        for column, value in zip(
+                            self.pk_column, instance_id, strict=True
+                        )
+                    ]
+                )
             if len(self.pk_column) == 1:
                 return self.pk_column[0] == instance_id
 
         return self.pk_column == instance_id
 
-    def _get_by_id_query(self, instance_id: T_ID) -> Select:
-        return self._get_all_query().where(self._id_query(instance_id))  # type: ignore
+    def _get_by_id_query(self, instance_id: T_ID) -> Select[Any]:
+        return self._get_all_query().where(self._id_query(instance_id))
 
     def _delete_by_id_query(self, instance_id: T_ID) -> Delete:
         query: Delete = delete(self.table).where(self._id_query(instance_id))
         return query
 
-    def _get_all_query(self) -> Select:
+    def _get_all_query(self) -> Select[Any]:
         return select(self.table).order_by(*self.get_all_order_by())
 
     def _insert_query(self) -> Insert:
@@ -121,15 +128,17 @@ class BaseAsyncRepository(Generic[T, T_ID, T_CREATE, T_UPDATE]):
     def _delete_all_query(self) -> Delete:
         return delete(self.table)
 
-    async def get_all(self) -> List[T]:
-        records: List[Dict] = await self._fetchall(self._get_all_query())
-        result: List[T] = []
+    async def get_all(self) -> list[T]:
+        records: Sequence[RowMapping] = await self._fetchall(self._get_all_query())
+        result: list[T] = []
         for record in records:
             result.append(self.to_domain_model(record))
         return result
 
     async def get_by_id(self, instance_id: T_ID) -> T:
-        result: Dict | None = await self._fetchone(self._get_by_id_query(instance_id))
+        result: RowMapping | None = await self._fetchone(
+            self._get_by_id_query(instance_id)
+        )
         if result is not None:
             return self.to_domain_model(result)
 
@@ -147,19 +156,19 @@ class BaseAsyncRepository(Generic[T, T_ID, T_CREATE, T_UPDATE]):
 
     async def insert(self, create_instance: T_CREATE) -> T:
         query: Insert = self._insert_query()
-        query = query.values(**self.create_instance_to_params(create_instance))  # type: ignore
+        query = query.values(**self.create_instance_to_params(create_instance))
         try:
             query = query.returning(self.table)
             result = await self._fetchone(query)
             if result is None:
                 raise IntegrityException()
-            return self.to_domain_model(result)  # type: ignore
+            return self.to_domain_model(result)
         except IntegrityError as exc:
             raise IntegrityException(str(exc)) from exc
 
     async def update(self, instance_id: T_ID, update_instance: T_UPDATE) -> T:
         values = self.update_instance_to_params(update_instance)
-        query: Update = self._update_query(instance_id).values(**values)  # type: ignore
+        query: Update = self._update_query(instance_id).values(**values)
 
         try:
             await self._execute(query)
@@ -174,11 +183,11 @@ class BaseAsyncRepository(Generic[T, T_ID, T_CREATE, T_UPDATE]):
             raise IntegrityException("Something went wrong")
         return int(result["count"])
 
-    async def get_paginated(self, offset: int, limit: int) -> List[T]:
+    async def get_paginated(self, offset: int, limit: int) -> list[T]:
         query: Any = self._get_all_query()
         query = query.order_by(self.pk_column).offset(offset).limit(limit)
-        query_result: List[Dict] = await self._fetchall(query)
-        results: List[T] = []
+        query_result: Sequence[RowMapping] = await self._fetchall(query)
+        results: list[T] = []
         for result in query_result:
             results.append(self.to_domain_model(result))
         return results

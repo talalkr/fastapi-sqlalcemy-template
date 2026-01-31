@@ -1,8 +1,12 @@
+from typing import TYPE_CHECKING
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from app.exceptions import DatabaseNotConnectedException
-from app.settings.db import DatabaseSettings
+
+if TYPE_CHECKING:
+    from app.settings.db import DatabaseSettings
 
 
 class ConnectionManager:
