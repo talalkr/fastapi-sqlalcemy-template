@@ -23,6 +23,8 @@ pytest = "*"
 ruff = "*"
 mypy = "*"
 pre-commit = "*"
+pytest-asyncio = "*"
+httpx = "*"
 
 
 [tool.mypy]
@@ -60,6 +62,9 @@ select = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]
+
+[tool.pytest]
+asyncio_mode = "auto"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

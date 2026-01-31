@@ -21,3 +21,10 @@ repos:
         language: system
         pass_filenames: false
         stages: [pre-commit]
+
+      - id: pytest
+        name: Pytest
+        entry: docker compose -f docker-compose.test.yaml run --rm pytest
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]

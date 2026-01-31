@@ -1,9 +1,6 @@
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from app.routers.deps import InfraServiceDep
-
 from fastapi import APIRouter, Response
+
+from app.routers.deps import InfraServiceDep  # noqa TC001
 
 infra_router = APIRouter(tags=["infra"])
 
