@@ -122,16 +122,16 @@ If any check fails, the commit is rejected. Fix the issue and commit again.
 
 ```bash
 # Lint and format check
-docker compose -f docker-compose.test.yaml run --rm ruff
+docker compose -f docker-compose.test.yml run --rm ruff
 
 # Auto-fix formatting and lint issues
-docker compose -f docker-compose.test.yaml run --rm ruff_fix
+docker compose -f docker-compose.test.yml run --rm ruff_fix
 
 # Type checking
-docker compose -f docker-compose.test.yaml run --rm mypy
+docker compose -f docker-compose.test.yml run --rm mypy
 
 # Tests
-docker compose -f docker-compose.test.yaml run --rm pytest
+docker compose -f docker-compose.test.yml run --rm pytest
 ```
 
 ### Run all pre-commit hooks without committing
@@ -190,7 +190,7 @@ Configuration is in [pyproject.toml](pyproject.toml).
 Tests use `pytest-asyncio` with async mode set to `auto` -- all async test functions are collected automatically.
 
 The test setup provides:
-- A dedicated test PostgreSQL database (via `docker-compose.test.yaml`)
+- A dedicated test PostgreSQL database (via `docker-compose.test.yml`)
 - Automatic migrations before test runs
 - An async `httpx.AsyncClient` fixture for endpoint testing
 - Data isolation between tests (automatic cleanup)

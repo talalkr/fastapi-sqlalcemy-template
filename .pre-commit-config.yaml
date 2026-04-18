@@ -3,28 +3,28 @@ repos:
     hooks:
       - id: ruff-fix
         name: Ruff Format & Fix
-        entry: docker compose -f docker-compose.test.yaml run --rm ruff_fix
+        entry: docker compose -f docker-compose.test.yml run --rm ruff_fix
         language: system
         pass_filenames: false
         stages: [pre-commit]
 
       - id: ruff-check
         name: Ruff Check
-        entry: docker compose -f docker-compose.test.yaml run --rm ruff
+        entry: docker compose -f docker-compose.test.yml run --rm ruff
         language: system
         pass_filenames: false
         stages: [pre-commit]
 
       - id: mypy
         name: Mypy Type Check
-        entry: docker compose -f docker-compose.test.yaml run --rm mypy
+        entry: docker compose -f docker-compose.test.yml run --rm mypy
         language: system
         pass_filenames: false
         stages: [pre-commit]
 
       - id: pytest
         name: Pytest
-        entry: docker compose -f docker-compose.test.yaml run --rm pytest
+        entry: docker compose -f docker-compose.test.yml run --rm pytest
         language: system
         pass_filenames: false
         stages: [pre-commit]
